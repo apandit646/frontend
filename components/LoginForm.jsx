@@ -19,7 +19,7 @@ import { Picker } from "@react-native-picker/picker"; // Import Picker for role 
 import * as Location from 'expo-location';  // Import Location API
 
 export default function SignupForm() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("User"); // Default role is "User"
   const [loading, setLoading] = useState(false);
@@ -42,7 +42,7 @@ export default function SignupForm() {
   }
 
   const handleSignup = async () => {
-    if (!username || !password) {
+    if (!email || !password) {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
@@ -60,7 +60,7 @@ export default function SignupForm() {
 
     try {
       const response = await axios.post("http://localhost:8080/api/v1/auth/loginContent", {
-        username,
+        email,
         password,
         role, // Include role in the request
         latitude: location.latitude,  // Send latitude
@@ -94,9 +94,9 @@ export default function SignupForm() {
             <View style={styles.inputContainer}>
               <Text style={[styles.label, { fontSize: width * 0.04 }]}>Username</Text>
               <TextInput
-                  placeholder="Enter your username"
+                  placeholder="Enter your Email"
                   value={username}
-                  onChangeText={setUsername}
+                  onChangeText={setEmail}
                   style={[styles.input, { fontSize: width * 0.04 }]}
                   autoCapitalize="none"
                   autoCorrect={false}
