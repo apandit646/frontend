@@ -16,6 +16,7 @@ import {
 import { useRouter } from "expo-router";
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker"; // Import Picker for role selection
+import * as Location from 'expo-location';  // Import Location API
 
 export default function SignupForm() {
   const [username, setUsername] = useState("");
@@ -24,10 +25,34 @@ export default function SignupForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { width, height } = useWindowDimensions();
+  
+  const [location, setLocation] = useState(null);  // State to hold location
+
+  // Function to get device location
+  async function getDeviceLocation() {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Permission to access location was denied');
+      return;
+    }
+
+    let location = await Location.getCurrentPositionAsync({});
+    console.log(location.coords.latitude, location.coords.longitude); // Logs the latitude and longitude
+    setLocation(location.coords);  // Store location coordinates in state
+  }
 
   const handleSignup = async () => {
     if (!username || !password) {
       Alert.alert("Error", "Please fill in all fields.");
+      return;
+    }
+
+    // Get location before submitting signup form
+    await getDeviceLocation();
+
+    // If location is not available, alert the user
+    if (!location) {
+      Alert.alert("Error", "Could not get your location. Please try again.");
       return;
     }
 
@@ -38,10 +63,12 @@ export default function SignupForm() {
         username,
         password,
         role, // Include role in the request
+        latitude: location.latitude,  // Send latitude
+        longitude: location.longitude,  // Send longitude
       });
 
       if (response.status === 201) {
-
+        // Handle successful signup (you can navigate or show a success message here)
       } else {
         throw new Error("Unexpected response");
       }
@@ -54,76 +81,76 @@ export default function SignupForm() {
   };
 
   return (
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.keyboardView}
-        >
-          <ScrollView contentContainerStyle={{ minHeight: height }} showsVerticalScrollIndicator={false}>
-            <View style={[styles.formContainer, { width: width * 0.9 }]}>
-              <Text style={[styles.title, { fontSize: width * 0.07 }]}>Create Account</Text>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardView}
+      >
+        <ScrollView contentContainerStyle={{ minHeight: height }} showsVerticalScrollIndicator={false}>
+          <View style={[styles.formContainer, { width: width * 0.9 }]}>
+            <Text style={[styles.title, { fontSize: width * 0.07 }]}>Create Account</Text>
 
-              {/* Username Input */}
-              <View style={styles.inputContainer}>
-                <Text style={[styles.label, { fontSize: width * 0.04 }]}>Username</Text>
-                <TextInput
-                    placeholder="Enter your username"
-                    value={username}
-                    onChangeText={setUsername}
-                    style={[styles.input, { fontSize: width * 0.04 }]}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                />
-              </View>
-
-              {/* Password Input */}
-              <View style={styles.inputContainer}>
-                <Text style={[styles.label, { fontSize: width * 0.04 }]}>Password</Text>
-                <TextInput
-                    placeholder="Enter your password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    style={[styles.input, { fontSize: width * 0.04 }]}
-                    autoCapitalize="none"
-                />
-              </View>
-
-              {/* Role Selection Dropdown */}
-              <View style={styles.inputContainer}>
-                <Text style={[styles.label, { fontSize: width * 0.04 }]}>Select Role</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker selectedValue={role} onValueChange={setRole} style={styles.picker}>
-                    <Picker.Item label="User" value="User" />
-                    <Picker.Item label="ServiceProvider" value="Admin" />
-                  </Picker>
-                </View>
-              </View>
-
-              {/* Signup Button */}
-              <TouchableOpacity
-                  style={[styles.signupButton, { padding: height * 0.018 }]}
-                  onPress={handleSignup}
-                  activeOpacity={0.8}
-                  disabled={loading}
-              >
-                {loading ? (
-                    <ActivityIndicator color="white" />
-                ) : (
-                    <Text style={[styles.signupButtonText, { fontSize: width * 0.045 }]}>Sign Up</Text>
-                )}
-              </TouchableOpacity>
-
-              {/* Login Link */}
-              <TouchableOpacity style={styles.loginLink} onPress={() => router.push("/")}>
-                <Text style={[styles.loginLinkText, { fontSize: width * 0.035 }]}>
-                  Already have an account? <Text style={styles.loginTextBold}>Sign-Up</Text>
-                </Text>
-              </TouchableOpacity>
+            {/* Username Input */}
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { fontSize: width * 0.04 }]}>Username</Text>
+              <TextInput
+                  placeholder="Enter your username"
+                  value={username}
+                  onChangeText={setUsername}
+                  style={[styles.input, { fontSize: width * 0.04 }]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+              />
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { fontSize: width * 0.04 }]}>Password</Text>
+              <TextInput
+                  placeholder="Enter your password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  style={[styles.input, { fontSize: width * 0.04 }]}
+                  autoCapitalize="none"
+              />
+            </View>
+
+            {/* Role Selection Dropdown */}
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { fontSize: width * 0.04 }]}>Select Role</Text>
+              <View style={styles.pickerContainer}>
+                <Picker selectedValue={role} onValueChange={setRole} style={styles.picker}>
+                  <Picker.Item label="User" value="User" />
+                  <Picker.Item label="ServiceProvider" value="Admin" />
+                </Picker>
+              </View>
+            </View>
+
+            {/* Signup Button */}
+            <TouchableOpacity
+                style={[styles.signupButton, { padding: height * 0.018 }]}
+                onPress={handleSignup}
+                activeOpacity={0.8}
+                disabled={loading}
+            >
+              {loading ? (
+                  <ActivityIndicator color="white" />
+              ) : (
+                  <Text style={[styles.signupButtonText, { fontSize: width * 0.045 }]}>Sign Up</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Login Link */}
+            <TouchableOpacity style={styles.loginLink} onPress={() => router.push("/")}>
+              <Text style={[styles.loginLinkText, { fontSize: width * 0.035 }]}>
+                Already have an account? <Text style={styles.loginTextBold}>Sign-Up</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
