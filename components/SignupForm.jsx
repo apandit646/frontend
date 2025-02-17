@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,8 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
-import axios from "axios"; // Import Axios
+import axios from "axios";
+import * as Location from "expo-location"; // Import Location API
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -28,7 +29,23 @@ export default function SignupScreen() {
     role: "user",
   });
 
+  const [location, setLocation] = useState(null);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "Allow location access to continue.");
+        return;
+      }
+      let locationData = await Location.getCurrentPositionAsync({});
+      setLocation({
+        latitude: locationData.coords.latitude,
+        longitude: locationData.coords.longitude,
+      });
+    })();
+  }, []);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -36,7 +53,6 @@ export default function SignupScreen() {
   };
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
   const validatePassword = (password) => password.length >= 6 && /[A-Za-z]/.test(password) && /\d/.test(password);
 
   const handleSignup = async () => {
@@ -53,21 +69,26 @@ export default function SignupScreen() {
     if (!confirmPassword) validationErrors.confirmPassword = "Confirm Password is required";
     else if (password !== confirmPassword) validationErrors.confirmPassword = "Passwords do not match";
 
+    if (!location) {
+      Alert.alert("Location Error", "Fetching location, please try again.");
+      return;
+    }
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
 
     try {
-      // API endpoint (replace with your actual backend URL)
-      const apiUrl = "http://localhost:8080/api/v1/auth/registerContent";
+      const apiUrl = "http://192.168.5.148:8080/auth/register";
 
-      // Send data to the backend
       const response = await axios.post(apiUrl, {
         fullName,
         email,
         password,
         role,
+        latitude: location.latitude,
+        longitude: location.longitude,
       });
 
       if (response.data.success) {

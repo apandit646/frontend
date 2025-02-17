@@ -31,44 +31,44 @@ export default function SignupForm() {
   // Function to get device location
   async function getDeviceLocation() {
     let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Permission to access location was denied');
-      return;
+    if (status !== "granted") {
+      Alert.alert("Permission Denied", "Permission to access location was denied.");
+      return null;
     }
-
+  
     let location = await Location.getCurrentPositionAsync({});
-    console.log(location.coords.latitude, location.coords.longitude); // Logs the latitude and longitude
-    setLocation(location.coords);  // Store location coordinates in state
+    return location.coords; // Return the coordinates instead of setting state
   }
-
+  
   const handleSignup = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
+  
+    setLoading(true);
+    await  router.push("/map");
 
-    // Get location before submitting signup form
-    await getDeviceLocation();
-
-    // If location is not available, alert the user
-    if (!location) {
-      Alert.alert("Error", "Could not get your location. Please try again.");
+    
+  
+    const coords = await getDeviceLocation();
+    if (!coords) {
+      setLoading(false);
       return;
     }
-
-    setLoading(true);
-
+  
     try {
-      const response = await axios.post("http://localhost:8080/api/v1/auth/loginContent", {
+      const response = await axios.post("http://192.168.5.148:8080/auth/login", {
         email,
         password,
-        role, // Include role in the request
-        latitude: location.latitude,  // Send latitude
-        longitude: location.longitude,  // Send longitude
+        role,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
       });
 
       if (response.status === 201) {
-        // Handle successful signup (you can navigate or show a success message here)
+        router.push("/map");
+         // Navigate on successful signup
       } else {
         throw new Error("Unexpected response");
       }
@@ -79,7 +79,7 @@ export default function SignupForm() {
       setLoading(false);
     }
   };
-
+  
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -95,7 +95,7 @@ export default function SignupForm() {
               <Text style={[styles.label, { fontSize: width * 0.04 }]}>Username</Text>
               <TextInput
                   placeholder="Enter your Email"
-                  value={username}
+                  value={email}
                   onChangeText={setEmail}
                   style={[styles.input, { fontSize: width * 0.04 }]}
                   autoCapitalize="none"
