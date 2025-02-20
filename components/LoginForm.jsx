@@ -26,7 +26,7 @@ export default function SignupForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { width, height } = useWindowDimensions();
-
+  const navigate = useNavigate();
   const [location, setLocation] = useState(null); // State to hold location
 
   // Function to get device location
@@ -74,6 +74,11 @@ export default function SignupForm() {
       console.log(res_data);
 
       if (response.status === 200) {
+        +(
+          // Handle successful signup (you can navigate or show a success message here)
+          Alert.alert("Success", "Signup successful! You can now login.")
+        );
+        navigate("/map"); // Navigate to login page
       } else {
         throw new Error("Unexpected response");
       }
