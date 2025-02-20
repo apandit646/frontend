@@ -22,6 +22,7 @@
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/stack": "^7.1.1",
+    "@react-three/fiber": "^8.17.14",
     "@rnmapbox/maps": "^10.1.33",
     "@turf/turf": "^7.2.0",
     "axios": "^1.7.9",
@@ -30,10 +31,12 @@
     "expo-blur": "~14.0.3",
     "expo-constants": "~17.0.5",
     "expo-font": "~13.0.3",
+    "expo-gl": "~15.0.4",
     "expo-haptics": "~14.0.1",
     "expo-linking": "~7.0.5",
-    "expo-location": "~18.0.5",
+    "expo-location": "~18.0.6",
     "expo-router": "~4.0.17",
+    "expo-secure-store": "^14.0.1",
     "expo-splash-screen": "~0.29.21",
     "expo-status-bar": "~2.0.1",
     "expo-symbols": "~0.2.1",
@@ -53,7 +56,10 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "^13.12.5",
-    "react-router-dom": "^7.1.5"
+    "react-router-dom": "^7.1.5",
+    "sockjs": "^0.3.24",
+    "sockjs-client": "^1.6.1",
+    "three": "^0.173.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

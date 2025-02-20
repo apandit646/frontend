@@ -11,22 +11,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
-  Keyboard
+  Keyboard,
+  Dimensions,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
-import * as Location from "expo-location"; // Import Location API
+import * as Location from "expo-location";
+import * as SecureStore from "expo-secure-store";
 
-export default function SignupScreen() {
+const { width } = Dimensions.get("window");
+
+export default function SignupForm() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    fullName: "",
+    name: "",
     email: "",
+    phoneNo: "",
     password: "",
     confirmPassword: "",
-    role: "user",
+    role: "User",
   });
 
   const [location, setLocation] = useState(null);
@@ -48,28 +52,43 @@ export default function SignupScreen() {
   }, []);
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: "" }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const validatePassword = (password) => password.length >= 6 && /[A-Za-z]/.test(password) && /\d/.test(password);
+  const validatePhone = (phoneNo) => /^[0-9]{10}$/.test(phoneNo);
+  const validatePassword = (password) =>
+      password.length >= 6 && /[A-Za-z]/.test(password) && /\d/.test(password);
 
   const handleSignup = async () => {
-    const { fullName, email, password, confirmPassword, role } = formData;
+    const { name, email, phoneNo, password, confirmPassword, role } = formData;
     let validationErrors = {};
 
-    if (!fullName) validationErrors.fullName = "Full Name is required";
+    if (!name) validationErrors.name = "Full Name is required";
     if (!email) validationErrors.email = "Email is required";
-    else if (!validateEmail(email)) validationErrors.email = "Invalid email format";
+    else if (!validateEmail(email))
+      validationErrors.email = "Invalid email format";
+
+    if (!phoneNo) validationErrors.phoneNo = "Phone number is required";
+    else if (!validatePhone(phoneNo))
+      validationErrors.phoneNo = "Phone number must be 10 digits";
 
     if (!password) validationErrors.password = "Password is required";
-    else if (!validatePassword(password)) validationErrors.password = "Password must be at least 6 characters and contain letters and numbers";
+    else if (!validatePassword(password))
+      validationErrors.password =
+          "Password must be at least 6 characters and contain letters and numbers";
 
-    if (!confirmPassword) validationErrors.confirmPassword = "Confirm Password is required";
-    else if (password !== confirmPassword) validationErrors.confirmPassword = "Passwords do not match";
+    if (!confirmPassword)
+      validationErrors.confirmPassword = "Confirm Password is required";
+    else if (password !== confirmPassword)
+      validationErrors.confirmPassword = "Passwords do not match";
 
     if (!location) {
+      setErrors((prev) => ({
+        ...prev,
+        location: "Location permission required",
+      }));
       Alert.alert("Location Error", "Fetching location, please try again.");
       return;
     }
@@ -80,11 +99,12 @@ export default function SignupScreen() {
     }
 
     try {
-      const apiUrl = "http://192.168.5.148:8080/auth/register";
+      const apiUrl = "http://192.168.5.184:8080/auth/register"; // Change to live API if needed
 
       const response = await axios.post(apiUrl, {
-        fullName,
+        name,
         email,
+        phoneNo,
         password,
         role,
         latitude: location.latitude,
@@ -92,11 +112,19 @@ export default function SignupScreen() {
       });
 
       if (response.data.success) {
-        await AsyncStorage.setItem("user", JSON.stringify({ fullName, email, role }));
         Alert.alert("Success", "Signup successful! You can now login.");
-        router.push("/login");
+        await SecureStore.setItemAsync("secure_token", response.data.token);
+        await SecureStore.setItemAsync(
+            "refresh_token",
+            response.data.refreshToken
+        );
+
+        router.push("/map");
       } else {
-        Alert.alert("Signup Failed", response.data.message || "An error occurred.");
+        Alert.alert(
+            "Signup Failed",
+            response.data.message || "An error occurred."
+        );
       }
     } catch (error) {
       console.error("Signup Error:", error);
@@ -107,75 +135,86 @@ export default function SignupScreen() {
   return (
       <SafeAreaView style={styles.container}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidContainer}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
+          <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={styles.keyboardAvoidContainer}
+          >
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContainer}
+            >
               <View style={styles.formContainer}>
                 <Text style={styles.title}>Create Account</Text>
 
-                {Object.keys(errors).map((key) => errors[key] && (<Text key={key} style={styles.errorText}>{errors[key]}</Text>))}
+                {Object.keys(errors).map(
+                    (key) =>
+                        errors[key] && (
+                            <Text key={key} style={styles.errorText}>
+                              {errors[key]}
+                            </Text>
+                        )
+                )}
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Full Name</Text>
-                  <TextInput
-                      placeholder="Enter your full name"
-                      value={formData.fullName}
-                      onChangeText={(value) => handleChange("fullName", value)}
-                      style={styles.input}
-                  />
-                </View>
+                <TextInput
+                    placeholder="Full Name"
+                    value={formData.name}
+                    onChangeText={(value) => handleChange("name", value)}
+                    style={styles.input}
+                />
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email</Text>
-                  <TextInput
-                      placeholder="Enter your email"
-                      value={formData.email}
-                      onChangeText={(value) => handleChange("email", value)}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      style={styles.input}
-                  />
-                </View>
+                <TextInput
+                    placeholder="Email"
+                    value={formData.email}
+                    onChangeText={(value) => handleChange("email", value)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    style={styles.input}
+                />
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Password</Text>
-                  <TextInput
-                      placeholder="Create password"
-                      value={formData.password}
-                      onChangeText={(value) => handleChange("password", value)}
-                      secureTextEntry
-                      style={styles.input}
-                  />
-                </View>
+                <TextInput
+                    placeholder="Phone Number"
+                    value={formData.phoneNo}
+                    onChangeText={(value) => handleChange("phoneNo", value)}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    style={styles.input}
+                />
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Confirm Password</Text>
-                  <TextInput
-                      placeholder="Confirm your password"
-                      value={formData.confirmPassword}
-                      onChangeText={(value) => handleChange("confirmPassword", value)}
-                      secureTextEntry
-                      style={styles.input}
-                  />
-                </View>
+                <TextInput
+                    placeholder="Password"
+                    value={formData.password}
+                    onChangeText={(value) => handleChange("password", value)}
+                    secureTextEntry
+                    style={styles.input}
+                />
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Select Role</Text>
-                  <Picker
-                      selectedValue={formData.role}
-                      onValueChange={(value) => handleChange("role", value)}
-                      style={styles.picker}
-                  >
-                    <Picker.Item label="User" value="user" />
-                    <Picker.Item label="Admin" value="admin" />
-                  </Picker>
-                </View>
+                <TextInput
+                    placeholder="Confirm Password"
+                    value={formData.confirmPassword}
+                    onChangeText={(value) => handleChange("confirmPassword", value)}
+                    secureTextEntry
+                    style={styles.input}
+                />
 
-                <TouchableOpacity style={styles.signupButton} onPress={handleSignup} activeOpacity={0.8}>
+                <Picker
+                    selectedValue={formData.role}
+                    onValueChange={(value) => handleChange("role", value)}
+                    style={styles.picker}
+                >
+                  <Picker.Item label="User" value="User" />
+                  <Picker.Item label="Service Provider" value="ServiceProvider" />
+                </Picker>
+
+                <TouchableOpacity
+                    style={styles.signupButton}
+                    onPress={handleSignup}
+                    activeOpacity={0.8}
+                >
                   <Text style={styles.signupButtonText}>Sign Up</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.loginLink} onPress={() => router.push("/login")}>
-                  <Text style={styles.loginLinkText}>
+                  <Text style={[styles.loginLinkText, { fontSize: width * 0.035 }]}>
                     Already have an account? <Text style={styles.loginTextBold}>Login</Text>
                   </Text>
                 </TouchableOpacity>
@@ -187,20 +226,57 @@ export default function SignupScreen() {
   );
 }
 
+// Styles
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  keyboardAvoidContainer: { flex: 1 },
-  scrollContainer: { flexGrow: 1, paddingVertical: 20 },
-  formContainer: { backgroundColor: "white", marginHorizontal: 20, borderRadius: 15, padding: 20, elevation: 5 },
-  title: { fontSize: 28, fontWeight: "bold", color: "#333", marginBottom: 25, textAlign: "center" },
-  inputGroup: { marginBottom: 16 },
-  label: { fontSize: 16, color: "#666", marginBottom: 8, fontWeight: "500" },
-  input: { borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: "#fafafa" },
-  picker: { borderWidth: 1, borderColor: "#ddd", borderRadius: 8, backgroundColor: "#fafafa", marginTop: 5 },
-  signupButton: { backgroundColor: "#007AFF", padding: 15, borderRadius: 8, marginTop: 10 },
-  signupButtonText: { color: "white", textAlign: "center", fontSize: 18, fontWeight: "600" },
-  loginLink: { marginTop: 15, padding: 10 },
-  loginLinkText: { textAlign: "center", color: "#666", fontSize: 14 },
-  loginTextBold: { color: "#007AFF", fontWeight: "600" },
-  errorText: { color: "red", fontSize: 14, textAlign: "center", marginBottom: 5 }
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    padding: 20,
+  },
+  keyboardAvoidContainer: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  formContainer: {
+    padding: 20,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 10,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  picker: {
+    height: 50,
+    marginBottom: 10,
+  },
+  signupButton: {
+    backgroundColor: "#007BFF",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  signupButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  errorText: {
+    color: "red",
+    marginBottom: 5,
+  },
 });
+
